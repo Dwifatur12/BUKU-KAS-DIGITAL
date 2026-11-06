@@ -51,16 +51,40 @@
                 <h1 class="text-3xl font-bold text-blue-400 tracking-tight"><i class="fa-solid fa-wallet mr-3"></i>BukuKas.</h1>
                 <p class="text-gray-400 text-sm mt-1">Sistem Pembukuan Minimalis</p>
             </div>
-            <div class="mt-4 md:mt-0 text-right">
-                <p class="text-sm text-gray-400 mb-1">Total Saldo Saat Ini</p>
-                <h2 id="totalBalanceDisplay" class="text-4xl font-mono font-bold text-emerald-400">Rp 0</h2>
+            <div class="mt-4 md:mt-0 flex flex-col items-end gap-3">
+                <div class="text-right">
+                    <p class="text-sm text-gray-400 mb-1">Total Saldo Saat Ini</p>
+                    <h2 id="totalBalanceDisplay" class="text-4xl font-mono font-bold text-emerald-400">Rp 0</h2>
+                </div>
+                <!-- Controls Admin -->
+                <div>
+                    <button id="loginBtn" onclick="openLoginModal()" class="text-xs bg-blue-900 hover:bg-blue-800 text-blue-200 px-4 py-1.5 rounded-full transition-colors border border-blue-700 shadow-md">
+                        <i class="fa-solid fa-lock mr-1"></i> Login Admin
+                    </button>
+                    <div id="adminMenu" class="hidden flex gap-2">
+                        <button onclick="openEditAccountModal()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full transition-colors border border-gray-600">
+                            <i class="fa-solid fa-user-pen mr-1"></i> Edit Akun
+                        </button>
+                        <button onclick="logoutAdmin()" class="text-xs bg-rose-900 hover:bg-rose-800 text-rose-200 px-3 py-1.5 rounded-full transition-colors border border-rose-700">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Form Input -->
-            <div class="lg:col-span-1 glass-panel p-6 rounded-2xl h-fit sticky top-6">
+            <div class="lg:col-span-1 glass-panel p-6 rounded-2xl h-fit sticky top-6 relative overflow-hidden">
                 <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-blue-900 pb-2">Catat Transaksi</h3>
+                
+                <!-- Lock Overlay for Non-Admins -->
+                <div id="formLockOverlay" class="absolute inset-0 bg-navy-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center text-center p-6 transition-all duration-300">
+                    <i class="fa-solid fa-lock text-4xl text-blue-500 mb-3 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]"></i>
+                    <h4 class="text-white font-semibold mb-1">Akses Terkunci</h4>
+                    <p class="text-gray-400 text-xs">Silakan login sebagai admin untuk mencatat, mengedit, atau menghapus transaksi.</p>
+                </div>
+
                 <form id="transactionForm" class="space-y-4">
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Tanggal</label>
@@ -132,6 +156,9 @@
                         <button onclick="exportToWord()" class="flex-1 md:flex-none bg-blue-800 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition-colors" title="Export ke Word">
                             <i class="fa-solid fa-file-word mr-1"></i> Word
                         </button>
+                        <button onclick="printReport()" class="flex-1 md:flex-none bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-lg transition-colors" title="Print Laporan">
+                            <i class="fa-solid fa-print mr-1"></i> Print
+                        </button>
                     </div>
                 </div>
 
@@ -146,7 +173,7 @@
                                     <th class="p-4 font-semibold text-right whitespace-nowrap">Pemasukan</th>
                                     <th class="p-4 font-semibold text-right whitespace-nowrap">Pengeluaran</th>
                                     <th class="p-4 font-semibold text-right whitespace-nowrap">Saldo</th>
-                                    <th class="p-4 font-semibold text-center whitespace-nowrap">Aksi</th>
+                                    <th id="thAksi" class="p-4 font-semibold text-center whitespace-nowrap hidden">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody" class="divide-y divide-blue-900/50">
@@ -166,7 +193,51 @@
         </div>
     </div>
 
-    <!-- Modal Konfirmasi Hapus (Hidden by default) -->
+    <!-- Modals -->
+
+    <!-- Modal Login -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm border border-blue-900/50">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-lock text-blue-400 mr-2"></i>Login Admin</h3>
+                <button onclick="closeLoginModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Username</label>
+                    <input type="text" id="loginUsername" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-medium py-2.5 rounded-lg transition-colors mt-2">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edit Akun -->
+    <div id="editAccountModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm border border-blue-900/50">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-pen text-blue-400 mr-2"></i>Edit Akun Admin</h3>
+                <button onclick="closeEditAccountModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="editAccountForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Username Baru</label>
+                    <input type="text" id="newUsername" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Password Baru</label>
+                    <input type="password" id="newPassword" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-medium py-2.5 rounded-lg transition-colors mt-2">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus -->
     <div id="deleteModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="glass-panel p-6 rounded-2xl w-full max-w-sm text-center border border-rose-900/50">
             <i class="fa-solid fa-triangle-exclamation text-5xl text-rose-500 mb-4 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]"></i>
@@ -181,28 +252,29 @@
 
     <!-- FIREBASE & LOGIC SCRIPT -->
     <script type="module">
-        // ---------------------------------------------------------
-        // 1. FIREBASE SETUP & INITIALIZATION (Database Guardrails)
-        // ---------------------------------------------------------
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global environment variables provided by system, with fallbacks
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'bukukas-minimalis-app';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Jika Anda menjalankan ini di luar platform, masukkan config Firebase Anda di sini.
             apiKey: "dummy-key", authDomain: "dummy.firebaseapp.com", projectId: "dummy-project" 
         };
         let db, auth, userId;
-        let transactions = []; // Menyimpan semua data dari database
-        let filteredTransactions = []; // Menyimpan data yang sedang ditampilkan setelah filter
-        let editingId = null; // Menyimpan ID transaksi yang sedang diedit
-        let transactionToDelete = null; // ID untuk modal hapus
-        let myChart = null; // Instance Chart.js
+        let transactions = []; 
+        let filteredTransactions = []; 
+        let editingId = null; 
+        let transactionToDelete = null; 
+        let myChart = null; 
 
-        // Initialize Firebase ONLY if a valid-looking config exists 
-        // (For pure HTML local testing without config, we bypass Firebase and use memory)
+        // State Admin
+        let isAdmin = false;
+        
+        // Load custom admin credentials if they were changed
+        const savedCreds = JSON.parse(localStorage.getItem('bukuKasAdminCreds')) || { user: '2001', pass: 'november' };
+        let adminUser = savedCreds.user;
+        let adminPass = savedCreds.pass;
+
         const isFirebaseConfigured = firebaseConfig.projectId !== "dummy-project";
 
         if (isFirebaseConfigured) {
@@ -211,9 +283,8 @@
             auth = getAuth(app);
             authenticateUser();
         } else {
-            console.log("Firebase tidak terkonfigurasi. Menggunakan penyimpanan lokal sementara (In-Memory).");
             userId = "local_user";
-            loadDemoData(); // Load dummy data for UI demonstration
+            loadDemoData(); 
         }
 
         async function authenticateUser() {
@@ -226,18 +297,14 @@
                 userId = auth.currentUser.uid;
                 fetchDataFromFirestore();
             } catch (error) {
-                console.error("Autentikasi gagal:", error);
                 showToast("Gagal terhubung ke database.", "error");
             }
         }
 
         function fetchDataFromFirestore() {
             if (!userId) return;
-            // RULE 1 STRICT PATH: /artifacts/{appId}/users/{userId}/{collectionName}
             const path = `artifacts/${appId}/users/${userId}/transactions`;
             const txCollection = collection(db, path);
-            
-            // RULE 2: No complex queries. Fetch all, sort/filter in JS memory.
             const q = query(txCollection);
 
             onSnapshot(q, (snapshot) => {
@@ -245,18 +312,10 @@
                 snapshot.forEach((doc) => {
                     transactions.push({ id: doc.id, ...doc.data() });
                 });
-                
-                // Urutkan berdasarkan tanggal (ascending)
                 transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
                 processAndRenderData();
-            }, (error) => {
-                console.error("Error fetching data: ", error);
             });
         }
-
-        // ---------------------------------------------------------
-        // 2. APLIKASI UTAMA LOGIC & UI UPDATES
-        // ---------------------------------------------------------
         
         const formatRupiah = (number) => {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
@@ -267,19 +326,36 @@
             return new Date(dateString).toLocaleDateString('id-ID', options);
         };
 
-        // Memproses data (hitung saldo berjalan) & terapkan filter
+        function updateAdminUI() {
+            const overlay = document.getElementById('formLockOverlay');
+            const loginBtn = document.getElementById('loginBtn');
+            const adminMenu = document.getElementById('adminMenu');
+            const thAksi = document.getElementById('thAksi');
+
+            if(isAdmin) {
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+                loginBtn.classList.add('hidden');
+                adminMenu.classList.remove('hidden');
+                thAksi.classList.remove('hidden');
+            } else {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0', 'pointer-events-none'), 10);
+                loginBtn.classList.remove('hidden');
+                adminMenu.classList.add('hidden');
+                thAksi.classList.add('hidden');
+            }
+            renderTable(filteredTransactions);
+        }
+
         function processAndRenderData() {
-            // Hitung saldo berjalan secara global berdasarkan urutan waktu
             let currentBalance = 0;
             const processedAll = transactions.map(tx => {
                 currentBalance += (Number(tx.income) - Number(tx.expense));
                 return { ...tx, runningBalance: currentBalance };
             });
 
-            // Update Total Saldo di Header
             document.getElementById('totalBalanceDisplay').textContent = formatRupiah(currentBalance);
-            
-            // Terapkan Filter
             applyFilters(processedAll);
         }
 
@@ -330,7 +406,7 @@
             tbody.innerHTML = '';
             
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada transaksi ditemukan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isAdmin ? '6' : '5'}" class="p-8 text-center text-gray-500">Tidak ada transaksi ditemukan.</td></tr>`;
                 tfoot.innerHTML = '';
                 return;
             }
@@ -350,7 +426,7 @@
                     <td class="p-4 border-b border-blue-900/50 text-right text-emerald-400 font-mono">${tx.income > 0 ? formatRupiah(tx.income) : '-'}</td>
                     <td class="p-4 border-b border-blue-900/50 text-right text-rose-400 font-mono">${tx.expense > 0 ? formatRupiah(tx.expense) : '-'}</td>
                     <td class="p-4 border-b border-blue-900/50 text-right font-mono font-bold text-blue-300">${formatRupiah(tx.runningBalance)}</td>
-                    <td class="p-4 border-b border-blue-900/50 text-center whitespace-nowrap">
+                    <td class="p-4 border-b border-blue-900/50 text-center whitespace-nowrap ${isAdmin ? '' : 'hidden'}">
                         <button onclick="editTransaction('${tx.id}')" class="text-blue-400 hover:text-blue-300 p-2 rounded hover:bg-blue-900/50 transition-colors mr-1" title="Edit">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
@@ -367,22 +443,17 @@
                     <td colspan="2" class="p-4 text-right">Total Periode Ini:</td>
                     <td class="p-4 text-right text-emerald-400 font-mono">${formatRupiah(totalIncome)}</td>
                     <td class="p-4 text-right text-rose-400 font-mono">${formatRupiah(totalExpense)}</td>
-                    <td colspan="2" class="p-4"></td>
+                    <td class="p-4"></td>
+                    ${isAdmin ? '<td class="p-4"></td>' : ''}
                 </tr>
             `;
 
             updateChart(totalIncome, totalExpense);
         }
 
-        // Fitur Chart (Visualisasi Data)
         function updateChart(income, expense) {
             const ctx = document.getElementById('financeChart').getContext('2d');
-            
-            if (myChart) {
-                myChart.destroy();
-            }
-
-            // Set default font styling for Chart.js
+            if (myChart) myChart.destroy();
             Chart.defaults.color = '#9ca3af';
             Chart.defaults.font.family = 'Inter, sans-serif';
 
@@ -393,55 +464,22 @@
                     datasets: [{
                         label: 'Nominal',
                         data: [income, expense],
-                        backgroundColor: [
-                            'rgba(52, 211, 153, 0.8)', // emerald-400
-                            'rgba(251, 113, 133, 0.8)'  // rose-400
-                        ],
-                        borderColor: [
-                            'rgb(16, 185, 129)', // emerald-500
-                            'rgb(225, 29, 72)'   // rose-600
-                        ],
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        barPercentage: 0.5
+                        backgroundColor: ['rgba(52, 211, 153, 0.8)', 'rgba(251, 113, 133, 0.8)'],
+                        borderColor: ['rgb(16, 185, 129)', 'rgb(225, 29, 72)'],
+                        borderWidth: 1, borderRadius: 6, barPercentage: 0.5
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return formatRupiah(context.raw);
-                                }
-                            }
-                        }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return formatRupiah(context.raw); } } } },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(30, 58, 138, 0.3)', // blue-900/30
-                                drawBorder: false
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    if(value === 0) return '0';
-                                    return 'Rp ' + (value / 1000) + 'k';
-                                }
-                            }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
+                        y: { beginAtZero: true, grid: { color: 'rgba(30, 58, 138, 0.3)', drawBorder: false }, ticks: { callback: function(value) { if(value === 0) return '0'; return 'Rp ' + (value / 1000) + 'k'; } } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
         }
 
-        // Format angka saat diketik
         function formatNumberInput(e) {
             let value = e.target.value.replace(/[^0-9]/g, '');
             if (value === '') value = '0';
@@ -450,15 +488,15 @@
         document.getElementById('inputIncome').addEventListener('input', formatNumberInput);
         document.getElementById('inputExpense').addEventListener('input', formatNumberInput);
 
-        // Ubah format string kembali ke angka murni
         function parseCurrency(str) {
             if (!str) return 0;
             return parseInt(str.toString().replace(/[^0-9]/g, ''), 10) || 0;
         }
 
-        // Form Submit Handler
         document.getElementById('transactionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if(!isAdmin) return;
+
             const date = document.getElementById('inputDate').value;
             const description = document.getElementById('inputDesc').value;
             const income = parseCurrency(document.getElementById('inputIncome').value);
@@ -469,12 +507,7 @@
                 return;
             }
 
-            const newTx = {
-                date: date,
-                description: description,
-                income: income,
-                expense: expense
-            };
+            const newTx = { date, description, income, expense };
 
             if (isFirebaseConfigured && userId) {
                 try {
@@ -489,16 +522,12 @@
                     }
                     resetForm(date);
                 } catch (error) {
-                    console.error("Error saving doc:", error);
                     showToast("Gagal menyimpan ke database", "error");
                 }
             } else {
-                // In-memory fallback if no Firebase
                 if (editingId) {
                     const idx = transactions.findIndex(t => t.id === editingId);
-                    if (idx > -1) {
-                        transactions[idx] = { ...transactions[idx], ...newTx };
-                    }
+                    if (idx > -1) transactions[idx] = { ...transactions[idx], ...newTx };
                     showToast("Transaksi diperbarui (Lokal)");
                 } else {
                     newTx.timestamp = Date.now();
@@ -523,6 +552,7 @@
         }
 
         window.editTransaction = function(id) {
+            if(!isAdmin) return;
             const tx = transactions.find(t => t.id === id);
             if (!tx) return;
             
@@ -542,8 +572,8 @@
             resetForm(document.getElementById('inputDate').value);
         };
 
-        // Fitur Hapus Transaksi & Modal
         window.openDeleteModal = function(id) {
+            if(!isAdmin) return;
             transactionToDelete = id;
             document.getElementById('deleteModal').classList.remove('hidden');
         };
@@ -554,7 +584,7 @@
         };
 
         window.confirmDelete = async function() {
-            if (!transactionToDelete) return;
+            if (!transactionToDelete || !isAdmin) return;
 
             if (isFirebaseConfigured && userId) {
                 try {
@@ -562,123 +592,168 @@
                     await deleteDoc(doc(db, path, transactionToDelete));
                     showToast("Transaksi berhasil dihapus!");
                 } catch (error) {
-                    console.error("Error deleting doc:", error);
                     showToast("Gagal menghapus dari database", "error");
                 }
             } else {
-                // In-memory fallback
                 transactions = transactions.filter(t => t.id !== transactionToDelete);
                 showToast("Transaksi dihapus (Lokal)");
                 processAndRenderData();
             }
             
             closeDeleteModal();
-            // Reset form if the deleted item is currently being edited
-            if (editingId === transactionToDelete) {
-                cancelEdit();
-            }
+            if (editingId === transactionToDelete) cancelEdit();
         };
 
-        // Event Listeners for Filters
+        // ADMIN LOGIN / ACCOUNT LOGIC
+        window.openLoginModal = function() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        };
+
+        window.closeLoginModal = function() {
+            document.getElementById('loginModal').classList.add('hidden');
+        };
+
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const u = document.getElementById('loginUsername').value;
+            const p = document.getElementById('loginPassword').value;
+            
+            if(u === adminUser && p === adminPass) {
+                isAdmin = true;
+                showToast("Berhasil login sebagai Admin");
+                closeLoginModal();
+                updateAdminUI();
+            } else {
+                showToast("Username atau password salah!", "error");
+            }
+        });
+
+        window.logoutAdmin = function() {
+            isAdmin = false;
+            cancelEdit();
+            showToast("Berhasil logout");
+            updateAdminUI();
+        };
+
+        window.openEditAccountModal = function() {
+            document.getElementById('editAccountModal').classList.remove('hidden');
+            document.getElementById('newUsername').value = adminUser;
+            document.getElementById('newPassword').value = adminPass;
+        };
+
+        window.closeEditAccountModal = function() {
+            document.getElementById('editAccountModal').classList.add('hidden');
+        };
+
+        document.getElementById('editAccountForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const nu = document.getElementById('newUsername').value;
+            const np = document.getElementById('newPassword').value;
+            
+            if(nu.trim() === '' || np.trim() === '') {
+                showToast("Data tidak boleh kosong", "error"); return;
+            }
+            
+            adminUser = nu;
+            adminPass = np;
+            localStorage.setItem('bukuKasAdminCreds', JSON.stringify({user: nu, pass: np}));
+            
+            showToast("Kredensial Admin berhasil diperbarui");
+            closeEditAccountModal();
+        });
+
+
         document.getElementById('searchDesc').addEventListener('input', processAndRenderData);
         document.getElementById('filterPeriod').addEventListener('change', (e) => {
             const customContainer = document.getElementById('customDateContainer');
             if (e.target.value === 'custom') {
-                customContainer.classList.remove('hidden');
-                customContainer.classList.add('flex');
+                customContainer.classList.remove('hidden'); customContainer.classList.add('flex');
             } else {
-                customContainer.classList.add('hidden');
-                customContainer.classList.remove('flex');
+                customContainer.classList.add('hidden'); customContainer.classList.remove('flex');
             }
             processAndRenderData();
         });
         document.getElementById('startDate').addEventListener('change', processAndRenderData);
         document.getElementById('endDate').addEventListener('change', processAndRenderData);
-
-        // Set default date input to today
         document.getElementById('inputDate').valueAsDate = new Date();
 
-
-        // ---------------------------------------------------------
-        // 3. FITUR EXPORT LAPORAN (EXCEL & WORD)
-        // ---------------------------------------------------------
         
+        // Export & Print
         window.exportToExcel = function() {
-            if (filteredTransactions.length === 0) {
-                showToast("Tidak ada data untuk diexport", "error"); return;
-            }
-            
-            // Format data for Excel
+            if (filteredTransactions.length === 0) { showToast("Tidak ada data", "error"); return; }
             const exportData = filteredTransactions.map(tx => ({
-                "Tanggal": formatDate(tx.date),
-                "Uraian": tx.description,
-                "Pemasukan": tx.income,
-                "Pengeluaran": tx.expense,
-                "Total Saldo": tx.runningBalance
+                "Tanggal": formatDate(tx.date), "Uraian": tx.description, "Pemasukan": tx.income, "Pengeluaran": tx.expense, "Total Saldo": tx.runningBalance
             }));
 
             const ws = XLSX.utils.json_to_sheet(exportData);
-            
-            // Definisi gaya garis tabel (border) solid hitam
             const borderStyle = {
-                top: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } }
+                top: { style: "thin", color: { rgb: "000000" } }, bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } }, right: { style: "thin", color: { rgb: "000000" } }
             };
 
             const range = XLSX.utils.decode_range(ws['!ref']);
-            
             for(let R = range.s.r; R <= range.e.r; ++R) {
                 for(let C = range.s.c; C <= range.e.c; ++C) {
                     const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
                     if(!ws[cellAddress]) continue;
                     if(!ws[cellAddress].s) ws[cellAddress].s = {};
-
-                    // Menerapkan border hitam ke SEMUA sel
                     ws[cellAddress].s.border = borderStyle;
-
-                    // Style untuk Header (Baris Pertama)
                     if(R === 0) {
-                        ws[cellAddress].s.fill = { fgColor: { rgb: "000080" } }; // Warna Biru Navy pekat
+                        ws[cellAddress].s.fill = { fgColor: { rgb: "000080" } };
                         ws[cellAddress].s.font = { color: { rgb: "FFFFFF" }, bold: true, name: "Arial" };
                         ws[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
                     } else {
-                        // Style untuk Data
                         ws[cellAddress].s.alignment = { vertical: "center" };
                         ws[cellAddress].s.font = { name: "Arial" };
-                        
-                        // Format Accounting Rupiah
-                        const isIncomeOrExpense = (C >= 2 && C <= 4);
-                        if(isIncomeOrExpense) {
-                            ws[cellAddress].z = '"Rp"#,##0;"Rp"-#,##0;"Rp"0';
-                        }
+                        if(C >= 2 && C <= 4) ws[cellAddress].z = '"Rp"#,##0;"Rp"-#,##0;"Rp"0';
                     }
                 }
             }
-
-            // Atur lebar kolom agar rapi (Column Widths)
-            ws['!cols'] = [
-                { wch: 15 }, // Tanggal
-                { wch: 35 }, // Uraian
-                { wch: 20 }, // Pemasukan
-                { wch: 20 }, // Pengeluaran
-                { wch: 20 }  // Total Saldo
-            ];
-
+            ws['!cols'] = [ { wch: 15 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 20 } ];
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, ws, "Laporan Kas");
-            
-            // Generate File
             XLSX.writeFile(workbook, `Laporan_BukuKas_${new Date().getTime()}.xlsx`);
         };
 
         window.exportToWord = function() {
-            if (filteredTransactions.length === 0) {
-                showToast("Tidak ada data untuk diexport", "error"); return;
-            }
+            if (filteredTransactions.length === 0) { showToast("Tidak ada data", "error"); return; }
+            let htmlContent = getPrintableHTML();
+            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Laporan Kas</title></head><body>";
+            const postHtml = "</body></html>";
+            const blob = new Blob(['\ufeff', preHtml + htmlContent + postHtml], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a'); link.href = url; link.download = `Laporan_BukuKas_${new Date().getTime()}.doc`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+        };
 
-            let htmlContent = `
+        window.printReport = function() {
+            if (filteredTransactions.length === 0) { showToast("Tidak ada data", "error"); return; }
+            let htmlContent = getPrintableHTML();
+            let printWin = window.open('', '_blank');
+            printWin.document.write(`
+                <html><head><title>Print Laporan Kas</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; color: black; background: white; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                    th { background-color: #000033; color: white; text-align: center !important; }
+                    .right { text-align: right; }
+                    .center { text-align: center; }
+                    .footer-row { font-weight: bold; background-color: #f3f4f6; color: black; }
+                </style>
+                </head><body>
+                ${htmlContent.replace(/style="[^"]*"/g, '')} <!-- Strip inline styles for print CSS to take over -->
+                <script>window.onload = function() { window.print(); window.close(); }<\/script>
+                </body></html>
+            `);
+            printWin.document.close();
+        }
+
+        // Helper untuk generate HTML table seragam untuk Print & Word
+        function getPrintableHTML() {
+            let html = `
                 <h2 style="text-align:center; font-family: sans-serif; color: #000033;">Laporan Buku Kas</h2>
                 <p style="text-align:center; font-family: sans-serif;">Diexport pada: ${new Date().toLocaleString('id-ID')}</p>
                 <table border="1" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
@@ -693,67 +768,43 @@
                     </thead>
                     <tbody>
             `;
-
             let totalIncome = 0; let totalExpense = 0;
-
             filteredTransactions.forEach(tx => {
                 totalIncome += tx.income; totalExpense += tx.expense;
-                htmlContent += `
+                html += `
                     <tr>
-                        <td style="padding: 8px; text-align:center;">${tx.date}</td>
+                        <td class="center" style="padding: 8px; text-align:center;">${tx.date}</td>
                         <td style="padding: 8px;">${tx.description}</td>
-                        <td style="padding: 8px; text-align:right;">${tx.income > 0 ? tx.income.toLocaleString('id-ID') : '-'}</td>
-                        <td style="padding: 8px; text-align:right;">${tx.expense > 0 ? tx.expense.toLocaleString('id-ID') : '-'}</td>
-                        <td style="padding: 8px; text-align:right;">${tx.runningBalance.toLocaleString('id-ID')}</td>
-                    </tr>
-                `;
+                        <td class="right" style="padding: 8px; text-align:right;">${tx.income > 0 ? tx.income.toLocaleString('id-ID') : '-'}</td>
+                        <td class="right" style="padding: 8px; text-align:right;">${tx.expense > 0 ? tx.expense.toLocaleString('id-ID') : '-'}</td>
+                        <td class="right" style="padding: 8px; text-align:right;">${tx.runningBalance.toLocaleString('id-ID')}</td>
+                    </tr>`;
             });
-
-            htmlContent += `
+            html += `
                     </tbody>
                     <tfoot>
-                        <tr style="font-weight: bold; background-color: #f3f4f6;">
-                            <td colspan="2" style="padding: 8px; text-align:right;">Total Periode:</td>
-                            <td style="padding: 8px; text-align:right;">Rp ${totalIncome.toLocaleString('id-ID')}</td>
-                            <td style="padding: 8px; text-align:right;">Rp ${totalExpense.toLocaleString('id-ID')}</td>
+                        <tr class="footer-row" style="font-weight: bold; background-color: #f3f4f6;">
+                            <td colspan="2" class="right" style="padding: 8px; text-align:right;">Total Periode:</td>
+                            <td class="right" style="padding: 8px; text-align:right;">Rp ${totalIncome.toLocaleString('id-ID')}</td>
+                            <td class="right" style="padding: 8px; text-align:right;">Rp ${totalExpense.toLocaleString('id-ID')}</td>
                             <td></td>
                         </tr>
                     </tfoot>
                 </table>
             `;
+            return html;
+        }
 
-            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Laporan Kas</title></head><body>";
-            const postHtml = "</body></html>";
-            const html = preHtml + htmlContent + postHtml;
-
-            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Laporan_BukuKas_${new Date().getTime()}.doc`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        };
-
-        // Utility: Custom Toast Message avoiding alert()
         function showToast(message, type = "success") {
             const toast = document.getElementById('toastMessage');
             toast.textContent = message;
-            if (type === "error") {
-                toast.className = "mt-4 bg-rose-900/50 border border-rose-500 text-rose-300 p-3 rounded-lg text-sm text-center transition-opacity";
-            } else {
-                toast.className = "mt-4 bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-3 rounded-lg text-sm text-center transition-opacity";
-            }
-            
+            toast.className = type === "error" 
+                ? "mt-4 bg-rose-900/50 border border-rose-500 text-rose-300 p-3 rounded-lg text-sm text-center transition-opacity" 
+                : "mt-4 bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-3 rounded-lg text-sm text-center transition-opacity";
             toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 3000);
+            setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
-        // Demo Data for local testing (jika Firebase config belum ada)
         function loadDemoData() {
             transactions = [
                 { id: "1", date: "2026-11-01", description: "Modal Awal", income: 10000000, expense: 0 },
@@ -761,8 +812,8 @@
                 { id: "3", date: "2026-11-05", description: "DP Proyek A", income: 5000000, expense: 0 },
             ];
             processAndRenderData();
+            updateAdminUI(); // Set Initial UI State
         }
-
     </script>
 </body>
 </html>
