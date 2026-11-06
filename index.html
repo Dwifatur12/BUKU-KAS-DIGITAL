@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembukuan Minimalis</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS with Styling (xlsx-js-style) for Beautiful Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <!-- Chart.js for Data Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            800: '#00004d',
+                            900: '#000033',
+                            950: '#00001a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for minimalist look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #00001a; }
+        ::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+        
+        body { background-color: #050505; color: #e5e7eb; }
+        .glass-panel {
+            background: rgba(0, 0, 51, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(30, 58, 138, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased p-4 md:p-8 flex justify-center">
+
+    <div class="w-full max-w-6xl space-y-6">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center glass-panel p-6 rounded-2xl shadow-2xl shadow-blue-900/20">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400 tracking-tight"><i class="fa-solid fa-wallet mr-3"></i>BukuKas.</h1>
+                <p class="text-gray-400 text-sm mt-1">Sistem Pembukuan Minimalis</p>
+            </div>
+            <div class="mt-4 md:mt-0 text-right">
+                <p class="text-sm text-gray-400 mb-1">Total Saldo Saat Ini</p>
+                <h2 id="totalBalanceDisplay" class="text-4xl font-mono font-bold text-emerald-400">Rp 0</h2>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Input -->
+            <div class="lg:col-span-1 glass-panel p-6 rounded-2xl h-fit sticky top-6">
+                <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-blue-900 pb-2">Catat Transaksi</h3>
+                <form id="transactionForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Tanggal</label>
+                        <input type="date" id="inputDate" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Uraian</label>
+                        <input type="text" id="inputDesc" placeholder="Contoh: Penjualan Produk A" required class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Pemasukan (Rp)</label>
+                        <input type="text" id="inputIncome" value="0" class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Pengeluaran (Rp)</label>
+                        <input type="text" id="inputExpense" value="0" class="w-full bg-navy-950 border border-blue-900 rounded-lg p-2.5 text-rose-400 font-mono focus:outline-none focus:border-rose-500 transition-colors">
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button type="submit" id="submitBtn" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white font-medium py-3 rounded-lg transition-all shadow-lg shadow-blue-900/50">
+                            <i class="fa-solid fa-plus mr-2" id="submitIcon"></i> <span id="submitText">Simpan Transaksi</span>
+                        </button>
+                        <button type="button" id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-all shadow-lg shadow-gray-900/50" title="Batal Edit">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Notifikasi Toast (Hidden by default) -->
+                <div id="toastMessage" class="hidden mt-4 bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-3 rounded-lg text-sm text-center transition-opacity">
+                    Transaksi berhasil disimpan!
+                </div>
+            </div>
+
+            <!-- Data & Laporan -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Chart Container -->
+                <div class="glass-panel p-5 rounded-2xl hidden md:block">
+                    <canvas id="financeChart" style="max-height: 250px;"></canvas>
+                </div>
+
+                <!-- Controls: Filter & Export -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="w-full md:w-auto flex-1 flex flex-wrap gap-3">
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i class="fa-solid fa-search absolute left-3 top-3 text-gray-500"></i>
+                            <input type="text" id="searchDesc" placeholder="Cari uraian..." class="w-full bg-navy-950 border border-blue-900 rounded-lg pl-10 p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <select id="filterPeriod" class="bg-navy-950 border border-blue-900 rounded-lg p-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500 min-w-[140px]">
+                            <option value="all">Semua Waktu</option>
+                            <option value="this_week">Minggu Ini</option>
+                            <option value="this_month">Bulan Ini</option>
+                            <option value="this_year">Tahun Ini</option>
+                            <option value="custom">Custom Tanggal</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Date Filter (Hidden by default) -->
+                    <div id="customDateContainer" class="hidden flex items-center gap-2 text-sm">
+                        <input type="date" id="startDate" class="bg-navy-950 border border-blue-900 rounded-lg p-1.5 text-gray-300">
+                        <span class="text-gray-500">-</span>
+                        <input type="date" id="endDate" class="bg-navy-950 border border-blue-900 rounded-lg p-1.5 text-gray-300">
+                    </div>
+
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="exportToExcel()" class="flex-1 md:flex-none bg-green-800 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg transition-colors" title="Export ke Excel">
+                            <i class="fa-solid fa-file-excel mr-1"></i> Excel
+                        </button>
+                        <button onclick="exportToWord()" class="flex-1 md:flex-none bg-blue-800 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition-colors" title="Export ke Word">
+                            <i class="fa-solid fa-file-word mr-1"></i> Word
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="glass-panel rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm" id="reportTable">
+                            <thead class="bg-navy-900 border-b border-blue-900 text-blue-200">
+                                <tr>
+                                    <th class="p-4 font-semibold whitespace-nowrap">Tanggal</th>
+                                    <th class="p-4 font-semibold min-w-[200px]">Uraian</th>
+                                    <th class="p-4 font-semibold text-right whitespace-nowrap">Pemasukan</th>
+                                    <th class="p-4 font-semibold text-right whitespace-nowrap">Pengeluaran</th>
+                                    <th class="p-4 font-semibold text-right whitespace-nowrap">Saldo</th>
+                                    <th class="p-4 font-semibold text-center whitespace-nowrap">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-blue-900/50">
+                                <!-- Data will be injected here -->
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-500">Memuat data...</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-navy-900 border-t border-blue-900 text-blue-100 font-semibold" id="tableFooter">
+                                <!-- Summary will be injected here -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus (Hidden by default) -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm text-center border border-rose-900/50">
+            <i class="fa-solid fa-triangle-exclamation text-5xl text-rose-500 mb-4 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]"></i>
+            <h3 class="text-xl font-bold text-white mb-2">Hapus Transaksi?</h3>
+            <p class="text-gray-400 text-sm mb-6">Data transaksi ini akan dihapus permanen dan tidak dapat dikembalikan.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2.5 rounded-lg transition-colors">Batal</button>
+                <button onclick="confirmDelete()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 rounded-lg transition-colors shadow-lg shadow-rose-900/50">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & LOGIC SCRIPT -->
+    <script type="module">
+        // ---------------------------------------------------------
+        // 1. FIREBASE SETUP & INITIALIZATION (Database Guardrails)
+        // ---------------------------------------------------------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global environment variables provided by system, with fallbacks
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'bukukas-minimalis-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            // Jika Anda menjalankan ini di luar platform, masukkan config Firebase Anda di sini.
+            apiKey: "dummy-key", authDomain: "dummy.firebaseapp.com", projectId: "dummy-project" 
+        };
+        let db, auth, userId;
+        let transactions = []; // Menyimpan semua data dari database
+        let filteredTransactions = []; // Menyimpan data yang sedang ditampilkan setelah filter
+        let editingId = null; // Menyimpan ID transaksi yang sedang diedit
+        let transactionToDelete = null; // ID untuk modal hapus
+        let myChart = null; // Instance Chart.js
+
+        // Initialize Firebase ONLY if a valid-looking config exists 
+        // (For pure HTML local testing without config, we bypass Firebase and use memory)
+        const isFirebaseConfigured = firebaseConfig.projectId !== "dummy-project";
+
+        if (isFirebaseConfigured) {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            authenticateUser();
+        } else {
+            console.log("Firebase tidak terkonfigurasi. Menggunakan penyimpanan lokal sementara (In-Memory).");
+            userId = "local_user";
+            loadDemoData(); // Load dummy data for UI demonstration
+        }
+
+        async function authenticateUser() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                fetchDataFromFirestore();
+            } catch (error) {
+                console.error("Autentikasi gagal:", error);
+                showToast("Gagal terhubung ke database.", "error");
+            }
+        }
+
+        function fetchDataFromFirestore() {
+            if (!userId) return;
+            // RULE 1 STRICT PATH: /artifacts/{appId}/users/{userId}/{collectionName}
+            const path = `artifacts/${appId}/users/${userId}/transactions`;
+            const txCollection = collection(db, path);
+            
+            // RULE 2: No complex queries. Fetch all, sort/filter in JS memory.
+            const q = query(txCollection);
+
+            onSnapshot(q, (snapshot) => {
+                transactions = [];
+                snapshot.forEach((doc) => {
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Urutkan berdasarkan tanggal (ascending)
+                transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+                processAndRenderData();
+            }, (error) => {
+                console.error("Error fetching data: ", error);
+            });
+        }
+
+        // ---------------------------------------------------------
+        // 2. APLIKASI UTAMA LOGIC & UI UPDATES
+        // ---------------------------------------------------------
+        
+        const formatRupiah = (number) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+        };
+
+        const formatDate = (dateString) => {
+            const options = { day: '2-digit', month: 'short', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        };
+
+        // Memproses data (hitung saldo berjalan) & terapkan filter
+        function processAndRenderData() {
+            // Hitung saldo berjalan secara global berdasarkan urutan waktu
+            let currentBalance = 0;
+            const processedAll = transactions.map(tx => {
+                currentBalance += (Number(tx.income) - Number(tx.expense));
+                return { ...tx, runningBalance: currentBalance };
+            });
+
+            // Update Total Saldo di Header
+            document.getElementById('totalBalanceDisplay').textContent = formatRupiah(currentBalance);
+            
+            // Terapkan Filter
+            applyFilters(processedAll);
+        }
+
+        function applyFilters(dataToFilter) {
+            const searchTerm = document.getElementById('searchDesc').value.toLowerCase();
+            const period = document.getElementById('filterPeriod').value;
+            
+            const now = new Date();
+            let startFilterDate, endFilterDate;
+
+            if (period === 'this_week') {
+                const firstDay = new Date(now.setDate(now.getDate() - now.getDay()));
+                startFilterDate = new Date(firstDay.setHours(0,0,0,0));
+                endFilterDate = new Date();
+            } else if (period === 'this_month') {
+                startFilterDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endFilterDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            } else if (period === 'this_year') {
+                startFilterDate = new Date(now.getFullYear(), 0, 1);
+                endFilterDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+            } else if (period === 'custom') {
+                const sd = document.getElementById('startDate').value;
+                const ed = document.getElementById('endDate').value;
+                if(sd) startFilterDate = new Date(sd);
+                if(ed) {
+                    endFilterDate = new Date(ed);
+                    endFilterDate.setHours(23, 59, 59);
+                }
+            }
+
+            filteredTransactions = dataToFilter.filter(tx => {
+                const txDate = new Date(tx.date);
+                const matchesSearch = tx.description.toLowerCase().includes(searchTerm);
+                let matchesDate = true;
+
+                if (startFilterDate && txDate < startFilterDate) matchesDate = false;
+                if (endFilterDate && txDate > endFilterDate) matchesDate = false;
+
+                return matchesSearch && matchesDate;
+            });
+
+            renderTable(filteredTransactions);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const tfoot = document.getElementById('tableFooter');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada transaksi ditemukan.</td></tr>`;
+                tfoot.innerHTML = '';
+                return;
+            }
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            data.forEach(tx => {
+                totalIncome += Number(tx.income);
+                totalExpense += Number(tx.expense);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-900/30 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 border-b border-blue-900/50 text-gray-300">${formatDate(tx.date)}</td>
+                    <td class="p-4 border-b border-blue-900/50 font-medium text-white">${tx.description}</td>
+                    <td class="p-4 border-b border-blue-900/50 text-right text-emerald-400 font-mono">${tx.income > 0 ? formatRupiah(tx.income) : '-'}</td>
+                    <td class="p-4 border-b border-blue-900/50 text-right text-rose-400 font-mono">${tx.expense > 0 ? formatRupiah(tx.expense) : '-'}</td>
+                    <td class="p-4 border-b border-blue-900/50 text-right font-mono font-bold text-blue-300">${formatRupiah(tx.runningBalance)}</td>
+                    <td class="p-4 border-b border-blue-900/50 text-center whitespace-nowrap">
+                        <button onclick="editTransaction('${tx.id}')" class="text-blue-400 hover:text-blue-300 p-2 rounded hover:bg-blue-900/50 transition-colors mr-1" title="Edit">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="openDeleteModal('${tx.id}')" class="text-rose-400 hover:text-rose-300 p-2 rounded hover:bg-rose-900/50 transition-colors" title="Hapus">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="2" class="p-4 text-right">Total Periode Ini:</td>
+                    <td class="p-4 text-right text-emerald-400 font-mono">${formatRupiah(totalIncome)}</td>
+                    <td class="p-4 text-right text-rose-400 font-mono">${formatRupiah(totalExpense)}</td>
+                    <td colspan="2" class="p-4"></td>
+                </tr>
+            `;
+
+            updateChart(totalIncome, totalExpense);
+        }
+
+        // Fitur Chart (Visualisasi Data)
+        function updateChart(income, expense) {
+            const ctx = document.getElementById('financeChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            // Set default font styling for Chart.js
+            Chart.defaults.color = '#9ca3af';
+            Chart.defaults.font.family = 'Inter, sans-serif';
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Total Pemasukan', 'Total Pengeluaran'],
+                    datasets: [{
+                        label: 'Nominal',
+                        data: [income, expense],
+                        backgroundColor: [
+                            'rgba(52, 211, 153, 0.8)', // emerald-400
+                            'rgba(251, 113, 133, 0.8)'  // rose-400
+                        ],
+                        borderColor: [
+                            'rgb(16, 185, 129)', // emerald-500
+                            'rgb(225, 29, 72)'   // rose-600
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barPercentage: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatRupiah(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(30, 58, 138, 0.3)', // blue-900/30
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if(value === 0) return '0';
+                                    return 'Rp ' + (value / 1000) + 'k';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Format angka saat diketik
+        function formatNumberInput(e) {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (value === '') value = '0';
+            e.target.value = parseInt(value, 10).toLocaleString('id-ID');
+        }
+        document.getElementById('inputIncome').addEventListener('input', formatNumberInput);
+        document.getElementById('inputExpense').addEventListener('input', formatNumberInput);
+
+        // Ubah format string kembali ke angka murni
+        function parseCurrency(str) {
+            if (!str) return 0;
+            return parseInt(str.toString().replace(/[^0-9]/g, ''), 10) || 0;
+        }
+
+        // Form Submit Handler
+        document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = document.getElementById('inputDate').value;
+            const description = document.getElementById('inputDesc').value;
+            const income = parseCurrency(document.getElementById('inputIncome').value);
+            const expense = parseCurrency(document.getElementById('inputExpense').value);
+
+            if (income === 0 && expense === 0) {
+                showToast("Pemasukan atau pengeluaran harus diisi!", "error");
+                return;
+            }
+
+            const newTx = {
+                date: date,
+                description: description,
+                income: income,
+                expense: expense
+            };
+
+            if (isFirebaseConfigured && userId) {
+                try {
+                    const path = `artifacts/${appId}/users/${userId}/transactions`;
+                    if (editingId) {
+                        await updateDoc(doc(db, path, editingId), newTx);
+                        showToast("Transaksi berhasil diperbarui!");
+                    } else {
+                        newTx.timestamp = Date.now();
+                        await addDoc(collection(db, path), newTx);
+                        showToast("Transaksi berhasil disimpan!");
+                    }
+                    resetForm(date);
+                } catch (error) {
+                    console.error("Error saving doc:", error);
+                    showToast("Gagal menyimpan ke database", "error");
+                }
+            } else {
+                // In-memory fallback if no Firebase
+                if (editingId) {
+                    const idx = transactions.findIndex(t => t.id === editingId);
+                    if (idx > -1) {
+                        transactions[idx] = { ...transactions[idx], ...newTx };
+                    }
+                    showToast("Transaksi diperbarui (Lokal)");
+                } else {
+                    newTx.timestamp = Date.now();
+                    transactions.push({ id: Date.now().toString(), ...newTx });
+                    showToast("Transaksi disimpan (Lokal)");
+                }
+                transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+                processAndRenderData();
+                resetForm(date);
+            }
+        });
+        
+        function resetForm(keepDate = null) {
+            document.getElementById('transactionForm').reset();
+            document.getElementById('inputDate').value = keepDate || new Date().toISOString().split('T')[0];
+            document.getElementById('inputIncome').value = '0';
+            document.getElementById('inputExpense').value = '0';
+            editingId = null;
+            document.getElementById('submitText').textContent = 'Simpan Transaksi';
+            document.getElementById('submitIcon').className = 'fa-solid fa-plus mr-2';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        window.editTransaction = function(id) {
+            const tx = transactions.find(t => t.id === id);
+            if (!tx) return;
+            
+            document.getElementById('inputDate').value = tx.date;
+            document.getElementById('inputDesc').value = tx.description;
+            document.getElementById('inputIncome').value = tx.income.toLocaleString('id-ID');
+            document.getElementById('inputExpense').value = tx.expense.toLocaleString('id-ID');
+            
+            editingId = id;
+            document.getElementById('submitText').textContent = 'Update Transaksi';
+            document.getElementById('submitIcon').className = 'fa-solid fa-save mr-2';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.cancelEdit = function() {
+            resetForm(document.getElementById('inputDate').value);
+        };
+
+        // Fitur Hapus Transaksi & Modal
+        window.openDeleteModal = function(id) {
+            transactionToDelete = id;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        };
+
+        window.closeDeleteModal = function() {
+            transactionToDelete = null;
+            document.getElementById('deleteModal').classList.add('hidden');
+        };
+
+        window.confirmDelete = async function() {
+            if (!transactionToDelete) return;
+
+            if (isFirebaseConfigured && userId) {
+                try {
+                    const path = `artifacts/${appId}/users/${userId}/transactions`;
+                    await deleteDoc(doc(db, path, transactionToDelete));
+                    showToast("Transaksi berhasil dihapus!");
+                } catch (error) {
+                    console.error("Error deleting doc:", error);
+                    showToast("Gagal menghapus dari database", "error");
+                }
+            } else {
+                // In-memory fallback
+                transactions = transactions.filter(t => t.id !== transactionToDelete);
+                showToast("Transaksi dihapus (Lokal)");
+                processAndRenderData();
+            }
+            
+            closeDeleteModal();
+            // Reset form if the deleted item is currently being edited
+            if (editingId === transactionToDelete) {
+                cancelEdit();
+            }
+        };
+
+        // Event Listeners for Filters
+        document.getElementById('searchDesc').addEventListener('input', processAndRenderData);
+        document.getElementById('filterPeriod').addEventListener('change', (e) => {
+            const customContainer = document.getElementById('customDateContainer');
+            if (e.target.value === 'custom') {
+                customContainer.classList.remove('hidden');
+                customContainer.classList.add('flex');
+            } else {
+                customContainer.classList.add('hidden');
+                customContainer.classList.remove('flex');
+            }
+            processAndRenderData();
+        });
+        document.getElementById('startDate').addEventListener('change', processAndRenderData);
+        document.getElementById('endDate').addEventListener('change', processAndRenderData);
+
+        // Set default date input to today
+        document.getElementById('inputDate').valueAsDate = new Date();
+
+
+        // ---------------------------------------------------------
+        // 3. FITUR EXPORT LAPORAN (EXCEL & WORD)
+        // ---------------------------------------------------------
+        
+        window.exportToExcel = function() {
+            if (filteredTransactions.length === 0) {
+                showToast("Tidak ada data untuk diexport", "error"); return;
+            }
+            
+            // Format data for Excel
+            const exportData = filteredTransactions.map(tx => ({
+                "Tanggal": formatDate(tx.date),
+                "Uraian": tx.description,
+                "Pemasukan": tx.income,
+                "Pengeluaran": tx.expense,
+                "Total Saldo": tx.runningBalance
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            
+            // Definisi gaya garis tabel (border) solid hitam
+            const borderStyle = {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+            };
+
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            
+            for(let R = range.s.r; R <= range.e.r; ++R) {
+                for(let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+                    if(!ws[cellAddress]) continue;
+                    if(!ws[cellAddress].s) ws[cellAddress].s = {};
+
+                    // Menerapkan border hitam ke SEMUA sel
+                    ws[cellAddress].s.border = borderStyle;
+
+                    // Style untuk Header (Baris Pertama)
+                    if(R === 0) {
+                        ws[cellAddress].s.fill = { fgColor: { rgb: "000080" } }; // Warna Biru Navy pekat
+                        ws[cellAddress].s.font = { color: { rgb: "FFFFFF" }, bold: true, name: "Arial" };
+                        ws[cellAddress].s.alignment = { horizontal: "center", vertical: "center" };
+                    } else {
+                        // Style untuk Data
+                        ws[cellAddress].s.alignment = { vertical: "center" };
+                        ws[cellAddress].s.font = { name: "Arial" };
+                        
+                        // Format Accounting Rupiah
+                        const isIncomeOrExpense = (C >= 2 && C <= 4);
+                        if(isIncomeOrExpense) {
+                            ws[cellAddress].z = '"Rp"#,##0;"Rp"-#,##0;"Rp"0';
+                        }
+                    }
+                }
+            }
+
+            // Atur lebar kolom agar rapi (Column Widths)
+            ws['!cols'] = [
+                { wch: 15 }, // Tanggal
+                { wch: 35 }, // Uraian
+                { wch: 20 }, // Pemasukan
+                { wch: 20 }, // Pengeluaran
+                { wch: 20 }  // Total Saldo
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, ws, "Laporan Kas");
+            
+            // Generate File
+            XLSX.writeFile(workbook, `Laporan_BukuKas_${new Date().getTime()}.xlsx`);
+        };
+
+        window.exportToWord = function() {
+            if (filteredTransactions.length === 0) {
+                showToast("Tidak ada data untuk diexport", "error"); return;
+            }
+
+            let htmlContent = `
+                <h2 style="text-align:center; font-family: sans-serif; color: #000033;">Laporan Buku Kas</h2>
+                <p style="text-align:center; font-family: sans-serif;">Diexport pada: ${new Date().toLocaleString('id-ID')}</p>
+                <table border="1" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #000033; color: white;">
+                            <th style="padding: 8px;">Tanggal</th>
+                            <th style="padding: 8px;">Uraian</th>
+                            <th style="padding: 8px;">Pemasukan</th>
+                            <th style="padding: 8px;">Pengeluaran</th>
+                            <th style="padding: 8px;">Total Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let totalIncome = 0; let totalExpense = 0;
+
+            filteredTransactions.forEach(tx => {
+                totalIncome += tx.income; totalExpense += tx.expense;
+                htmlContent += `
+                    <tr>
+                        <td style="padding: 8px; text-align:center;">${tx.date}</td>
+                        <td style="padding: 8px;">${tx.description}</td>
+                        <td style="padding: 8px; text-align:right;">${tx.income > 0 ? tx.income.toLocaleString('id-ID') : '-'}</td>
+                        <td style="padding: 8px; text-align:right;">${tx.expense > 0 ? tx.expense.toLocaleString('id-ID') : '-'}</td>
+                        <td style="padding: 8px; text-align:right;">${tx.runningBalance.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+            });
+
+            htmlContent += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: bold; background-color: #f3f4f6;">
+                            <td colspan="2" style="padding: 8px; text-align:right;">Total Periode:</td>
+                            <td style="padding: 8px; text-align:right;">Rp ${totalIncome.toLocaleString('id-ID')}</td>
+                            <td style="padding: 8px; text-align:right;">Rp ${totalExpense.toLocaleString('id-ID')}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+
+            const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Laporan Kas</title></head><body>";
+            const postHtml = "</body></html>";
+            const html = preHtml + htmlContent + postHtml;
+
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Laporan_BukuKas_${new Date().getTime()}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
+
+        // Utility: Custom Toast Message avoiding alert()
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message;
+            if (type === "error") {
+                toast.className = "mt-4 bg-rose-900/50 border border-rose-500 text-rose-300 p-3 rounded-lg text-sm text-center transition-opacity";
+            } else {
+                toast.className = "mt-4 bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-3 rounded-lg text-sm text-center transition-opacity";
+            }
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Demo Data for local testing (jika Firebase config belum ada)
+        function loadDemoData() {
+            transactions = [
+                { id: "1", date: "2026-11-01", description: "Modal Awal", income: 10000000, expense: 0 },
+                { id: "2", date: "2026-11-02", description: "Beli Alat Tulis", income: 0, expense: 250000 },
+                { id: "3", date: "2026-11-05", description: "DP Proyek A", income: 5000000, expense: 0 },
+            ];
+            processAndRenderData();
+        }
+
+    </script>
+</body>
+</html>
