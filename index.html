@@ -258,14 +258,15 @@
 
         // Konfigurasi asli Firebase Anda
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'bukukas-digital-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyAfQ8aQcctMIY9Q8_j3L2dTchWJf0dCW0E",
-            authDomain: "buku-kas-digital-76f4e.firebaseapp.com",
-            projectId: "buku-kas-digital-76f4e",
-            storageBucket: "buku-kas-digital-76f4e.firebasestorage.app",
-            messagingSenderId: "481731129975",
-            appId: "1:481731129975:web:c1cc0827a866d5c8f8cc72"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyAfQ8aQcctMIY9Q8_j3L2dTchWJf0dCW0E",
+  authDomain: "buku-kas-digital-76f4e.firebaseapp.com",
+  projectId: "buku-kas-digital-76f4e",
+  storageBucket: "buku-kas-digital-76f4e.firebasestorage.app",
+  messagingSenderId: "481731129975",
+  appId: "1:481731129975:web:c1cc0827a866d5c8f8cc72"
+};
+
         
         let db, auth;
         let transactions = []; 
